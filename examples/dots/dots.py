@@ -1,6 +1,6 @@
 from spike import PrimeHub, LightMatrix, Button, StatusLight, ForceSensor, MotionSensor, Speaker, ColorSensor, App, DistanceSensor, Motor, MotorPair
 from spike.control import wait_for_seconds, wait_until, Timer
-from remote.control import PoweredUPRemote, PoweredUPColors, PoweredUPButtons
+from remote.control import PURemote, PUColors, PUButtons
 
 """
 LEGO(R) SPIKE PRIME + POWERED UP
@@ -33,21 +33,21 @@ def on_button(button):
     :param button: button id
     """
     hub.light_matrix.off()
-    if button == PoweredUPButtons.LEFT_PLUS:
+    if button == PUButtons.LEFT_PLUS:
         hub.light_matrix.set_pixel(0, 0, brightness=100)
-    elif button == PoweredUPButtons.LEFT_RED:
+    elif button == PUButtons.LEFT_RED:
         hub.light_matrix.set_pixel(1, 0, brightness=100)
-    elif button == PoweredUPButtons.LEFT_MINUS:
+    elif button == PUButtons.LEFT_MINUS:
         hub.light_matrix.set_pixel(2, 0, brightness=100)
-    elif button == PoweredUPButtons.RIGHT_PLUS:
+    elif button == PUButtons.RIGHT_PLUS:
         hub.light_matrix.set_pixel(3, 0, brightness=100)
-    elif button == PoweredUPButtons.RIGHT_RED:
+    elif button == PUButtons.RIGHT_RED:
         hub.light_matrix.set_pixel(4, 0, brightness=100)
-    elif button == PoweredUPButtons.RIGHT_MINUS:
+    elif button == PUButtons.RIGHT_MINUS:
         hub.light_matrix.set_pixel(0, 1, brightness=100)
-    elif button == PoweredUPButtons.LEFT_PLUS_RIGHT_PLUS:
+    elif button == PUButtons.LEFT_PLUS_RIGHT_PLUS:
         hub.light_matrix.set_pixel(0, 2, brightness=100)
-    elif button == PoweredUPButtons.RELEASED:
+    elif button == PUButtons.RELEASED:
         hub.light_matrix.off()
     else:
         hub.light_matrix.off()
@@ -57,7 +57,7 @@ def on_button(button):
 hub = PrimeHub()
 
 # create remote and connect
-remote = PoweredUPRemote()
+remote = PURemote()
 remote.debug = True
 remote.on_connect(callback=on_connect)
 remote.on_disconnect(callback=on_disconnect)

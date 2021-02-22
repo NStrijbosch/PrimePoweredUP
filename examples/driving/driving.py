@@ -1,6 +1,6 @@
 from spike import PrimeHub, LightMatrix, Button, StatusLight, ForceSensor, MotionSensor, Speaker, ColorSensor, App, DistanceSensor, Motor, MotorPair
 from spike.control import wait_for_seconds, wait_until, Timer
-from remote.control import PoweredUPRemote, PoweredUPColors, PoweredUPButtons
+from remote.control import PURemote, PUColors, PUButtons
 
 """
 LEGO(R) SPIKE PRIME + POWERED UP
@@ -33,19 +33,19 @@ def on_button(button):
 
     :param button: button id
     """
-    if button == PoweredUPButtons.RIGHT_PLUS:
+    if button == PUButtons.RIGHT_PLUS:
         motor_pair.start(speed=75)
-    elif button == PoweredUPButtons.RIGHT_MINUS:
+    elif button == PUButtons.RIGHT_MINUS:
         motor_pair.start(speed=-75)
-    elif button == PoweredUPButtons.LEFT_PLUS_RIGHT_PLUS:
+    elif button == PUButtons.LEFT_PLUS_RIGHT_PLUS:
         motor_pair.start(steering=-45, speed=75)
-    elif button == PoweredUPButtons.LEFT_MINUS_RIGHT_PLUS:
+    elif button == PUButtons.LEFT_MINUS_RIGHT_PLUS:
         motor_pair.start(steering=45, speed=75)
-    elif button == PoweredUPButtons.LEFT_MINUS_RIGHT_MINUS:
+    elif button == PUButtons.LEFT_MINUS_RIGHT_MINUS:
         motor_pair.start(steering=45, speed=-75)
-    elif button == PoweredUPButtons.LEFT_PLUS_RIGHT_MINUS:
+    elif button == PUButtons.LEFT_PLUS_RIGHT_MINUS:
         motor_pair.start(steering=-45, speed=-75)
-    elif button == PoweredUPButtons.RELEASED:
+    elif button == PUButtons.RELEASED:
         motor_pair.stop()
     else:
         motor_pair.stop()
@@ -59,7 +59,7 @@ motor_pair = MotorPair('A', 'B')
 motor_pair.set_stop_action('coast')
 
 # create remote and connect
-remote = PoweredUPRemote()
+remote = PURemote()
 remote.on_connect(callback=on_connect)
 remote.on_disconnect(callback=on_disconnect)
 remote.on_button(callback=on_button)
