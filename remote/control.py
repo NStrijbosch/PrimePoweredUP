@@ -10,8 +10,9 @@ LEGO(R) SPIKE PRIME + POWERED UP
 
 This is a basic core build on top of ubluetooth
 which has the ability to detect and connect to
-Powered UP devices from Lego. Currently only the
-Powered UP Remote is fully implemented.
+Powered UP devices from LEGO. Currently only the
+Powered UP Remote is fully implemented and the
+Control+ Hub is partially supported
 """
 
 class PoweredUPButtons:
@@ -53,6 +54,35 @@ class PoweredUPColors:
     ORANGE = const(0x08)
     RED = const(0x09)
     WHITE = const(0x0A)
+    
+class Led:
+    """
+    Class to control build in LED
+    """
+    
+    def __init__(self,hub,port = 0x00):
+        """
+        Create a instance of LED
+        """
+        self.__port = port
+        self.__hub = hub
+        
+    def __call__(self,color):
+        """
+        callback to contorl LED color
+
+        :param color: color byte
+        :returns: nothing
+        """
+        self.__set_led_color(color)
+        
+    """
+    private functions
+    -----------------
+    """
+    def __set_led_color(self, color_byte):
+        color = self.__hub.__create_message([0x08, 0x00, 0x81, self.__port, 0x11, 0x51, 0x00, color_byte])
+        self.__hub.__handler.write(color)
 
 class ControlPlusHub:
     """
@@ -75,6 +105,9 @@ class ControlPlusHub:
         # callbacks
         self.__connect_callback = None
         self.__disconnect_callback = None
+        
+        # devices
+        self.Led = Led(self,0x32)
 
     def connect(self, timeout=3000, address=None):
         """
@@ -98,15 +131,6 @@ class ControlPlusHub:
         :returns: nothing
         """
         self.__handler.disconnect()
-
-    def Led(self, color):
-        """
-        set color of a connected remote, use PoweredUPColors class
-
-        :param color: color byte
-        :returns: nothing
-        """
-        self.__set_led_color(color)
 
     def on_button(self, callback):
         """
@@ -152,10 +176,6 @@ class ControlPlusHub:
         message = struct.pack('%sb' % len(byte_array), *byte_array)
         return message
 
-    def __set_led_color(self, color_byte):
-        color = self.__create_message([0x08, 0x00, 0x81, 0x32, 0x11, 0x51, 0x00, color_byte])
-        self.__handler.write(color)
-
     def __on_scan(self, addr_type, addr, man_data):
         if not self.__address:
             if addr and man_data[2][1] == self.__CONTROL_PLUS_HUB_ID:
@@ -169,7 +189,7 @@ class ControlPlusHub:
         #right_port = self.__create_message([0x0A, 0x00, 0x41, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
         #notifier = self.__create_message([0x01, 0x00])
 
-        self.__set_led_color(self.__color)
+        self.Led(self.__color)
         #utime.sleep(0.1)
         #self.__handler.write(left_port)
         #utime.sleep(0.1)
@@ -233,6 +253,9 @@ class PoweredUPRemote:
         self.__button_callback = None
         self.__connect_callback = None
         self.__disconnect_callback = None
+        
+        # devices
+        self.Led = Led(self,0x34)
 
     def connect(self, timeout=3000, address=None):
         """
@@ -256,15 +279,6 @@ class PoweredUPRemote:
         :returns: nothing
         """
         self.__handler.disconnect()
-
-    def Led(self, color):
-        """
-        set color of a connected remote, use PoweredUPColors class
-
-        :param color: color byte
-        :returns: nothing
-        """
-        self.__set_led_color(color)
 
     def on_button(self, callback):
         """
@@ -310,10 +324,6 @@ class PoweredUPRemote:
         message = struct.pack('%sb' % len(byte_array), *byte_array)
         return message
 
-    def __set_led_color(self, color_byte):
-        color = self.__create_message([0x08, 0x00, 0x81, 0x34, 0x11, 0x51, 0x00, color_byte])
-        self.__handler.write(color)
-
     def __on_scan(self, addr_type, addr, man_data):
         if not self.__address:
             if addr and man_data[2][1] == self.__POWERED_UP_REMOTE_ID:
@@ -327,7 +337,7 @@ class PoweredUPRemote:
         right_port = self.__create_message([0x0A, 0x00, 0x41, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
         notifier = self.__create_message([0x01, 0x00])
 
-        self.__set_led_color(self.__color)
+        self.Led(self.__color)
         utime.sleep(0.1)
         self.__handler.write(left_port)
         utime.sleep(0.1)
@@ -708,7 +718,7 @@ class _Decoder:
 
 def CPhub_demo():
     
-    CPhub = ControlPlusHub()
+    CPhub = PoweredUPRemote()
     CPhub.connect()
 
     while not CPhub.is_connected():
