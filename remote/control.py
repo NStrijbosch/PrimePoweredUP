@@ -14,7 +14,6 @@ Powered UP devices from Lego. Currently only the
 Powered UP Remote is fully implemented.
 """
 
-
 class PoweredUPButtons:
     """
     LEGO(R) PowerUP(TM) Button Constants
@@ -54,6 +53,140 @@ class PoweredUPColors:
     ORANGE = const(0x08)
     RED = const(0x09)
     WHITE = const(0x0A)
+
+class ControlPlusHub:
+    """
+    Class to handle LEGO(R) Control+(TM) hub
+    """
+
+    def __init__(self):
+        """
+        Create a instance of Control+ hub
+        """
+        # constants
+        self.debug = False
+        self.__CONTROL_PLUS_HUB_ID = 0x80
+        self.__color = PoweredUPColors.BLUE
+        self.__address = None
+
+        # class specific
+        self.__handler = _PoweredUPHandler()
+
+        # callbacks
+        self.__connect_callback = None
+        self.__disconnect_callback = None
+
+    def connect(self, timeout=3000, address=None):
+        """
+        connect to a powered up remote
+
+        :param timeout: time of scanning for devices in ms, default is 3000
+        :param address: mac address of device, connect to a specific device if set
+        :returns: nothing
+        """
+        if address:
+            self.__address = ubinascii.unhexlify(address.replace(':', ''))
+        self.__handler.debug = self.debug
+        self.__handler.on_connect(callback=self.__on_connect)
+        self.__handler.on_disconnect(callback=self.__on_disconnect)
+        self.__handler.on_notify(callback=self.__on_notify)
+        self.__handler.scan_start(timeout, callback=self.__on_scan)
+
+    def disconnect(self):
+        """
+        disconnect from a powered up remote
+        :returns: nothing
+        """
+        self.__handler.disconnect()
+
+    def set_color(self, color):
+        """
+        set color of a connected remote, use PoweredUPColors class
+
+        :param color: color byte
+        :returns: nothing
+        """
+        self.__set_led_color(color)
+
+    def on_button(self, callback):
+        """
+        create a callback for button actions
+
+        :param callback: callback function, contains button data
+        :returns: nothing
+        """
+        self.__button_callback = callback
+
+    def on_connect(self, callback):
+        """
+        create a callback for on connect actions
+
+        :param callback: callback function
+        :returns: nothing
+        """
+        self.__connect_callback = callback
+
+    def on_disconnect(self, callback):
+        """
+        create a callback for on disconnect actions
+
+        :param callback: callback function
+        :returns: nothing
+        """
+        self.__disconnect_callback = callback
+        
+    def is_connected(self):
+        """
+        Check if hub is connected
+        
+        :returns: nothing
+        """
+        return self.__handler.is_connected()
+
+    """
+    private functions
+    -----------------
+    """
+
+    def __create_message(self, byte_array):
+        message = struct.pack('%sb' % len(byte_array), *byte_array)
+        return message
+
+    def __set_led_color(self, color_byte):
+        color = self.__create_message([0x08, 0x00, 0x81, 0x32, 0x11, 0x51, 0x00, color_byte])
+        self.__handler.write(color)
+
+    def __on_scan(self, addr_type, addr, man_data):
+        if not self.__address:
+            if addr and man_data[2][1] == self.__CONTROL_PLUS_HUB_ID:
+                self.__handler.connect(addr_type, addr)
+        else:
+            if self.__address == addr and man_data[2][1] == self.__CONTROL_PLUS_HUB_ID:
+                self.__handler.connect(addr_type, addr)
+
+    def __on_connect(self):
+        #left_port = self.__create_message([0x0A, 0x00, 0x41, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        #right_port = self.__create_message([0x0A, 0x00, 0x41, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        #notifier = self.__create_message([0x01, 0x00])
+
+        self.__set_led_color(self.__color)
+        #utime.sleep(0.1)
+        #self.__handler.write(left_port)
+        #utime.sleep(0.1)
+        #self.__handler.write(right_port)
+        #utime.sleep(0.1)
+        #self.__handler.write(notifier, 0x0C)
+        if self.__connect_callback:
+            self.__connect_callback()
+
+    def __on_disconnect(self):
+        if self.__disconnect_callback:
+            self.__disconnect_callback()
+
+    def __on_notify(self, data):
+        pass
+
+
 
 
 class PoweredUPRemote:
@@ -423,6 +556,14 @@ class _PoweredUPHandler:
         :returns: nothing
         """
         self.__disconnected_callback = callback
+        
+    def is_connected(self):
+        """
+        Check if hub is connected
+        
+        :returns: nothing
+        """
+        return self.__is_connected()
 
     """
     private functions
@@ -430,7 +571,7 @@ class _PoweredUPHandler:
     """
 
     def __is_connected(self):
-        return self.__conn_handle is not None
+        return self.__conn_handle is not None and self.__value_handle is not None
 
     def __irq(self, event, data):
         if event == self.__IRQ_SCAN_RESULT:
@@ -467,6 +608,7 @@ class _PoweredUPHandler:
         elif event == self.__IRQ_GATTC_SERVICE_RESULT:
             conn_handle, start_handle, end_handle, uuid = data
             if conn_handle == self.__conn_handle and uuid == self.__LEGO_SERVICE_UUID:
+                utime.sleep_ms(100)
                 self.__ble.gattc_discover_characteristics(self.__conn_handle, start_handle, end_handle)
 
         elif event == self.__IRQ_GATTC_CHARACTERISTIC_RESULT:
@@ -555,3 +697,19 @@ class _Decoder:
                 result.append(payload[i + 2: i + payload[i] + 1])
             i += 1 + payload[i]
         return result
+
+def CPhub_demo():
+    
+    CPhub = ControlPlusHub()
+    CPhub.connect()
+
+    while not CPhub.is_connected():
+        pass
+
+    k = 0
+    while True:
+        CPhub.set_color(k%11)
+        k+=1
+        utime.sleep(1)
+        
+CPhub_demo()
