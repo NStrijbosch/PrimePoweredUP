@@ -99,7 +99,7 @@ class ControlPlusHub:
         """
         self.__handler.disconnect()
 
-    def set_color(self, color):
+    def Led(self, color):
         """
         set color of a connected remote, use PoweredUPColors class
 
@@ -257,14 +257,14 @@ class PoweredUPRemote:
         """
         self.__handler.disconnect()
 
-    def set_color(self, color):
+    def Led(self, color):
         """
         set color of a connected remote, use PoweredUPColors class
 
         :param color: color byte
         :returns: nothing
         """
-        self.__set_remote_color(color)
+        self.__set_led_color(color)
 
     def on_button(self, callback):
         """
@@ -292,6 +292,14 @@ class PoweredUPRemote:
         :returns: nothing
         """
         self.__disconnect_callback = callback
+        
+    def is_connected(self):
+        """
+        Check if hub is connected
+        
+        :returns: nothing
+        """
+        return self.__handler.is_connected()
 
     """
     private functions
@@ -302,7 +310,7 @@ class PoweredUPRemote:
         message = struct.pack('%sb' % len(byte_array), *byte_array)
         return message
 
-    def __set_remote_color(self, color_byte):
+    def __set_led_color(self, color_byte):
         color = self.__create_message([0x08, 0x00, 0x81, 0x34, 0x11, 0x51, 0x00, color_byte])
         self.__handler.write(color)
 
@@ -319,7 +327,7 @@ class PoweredUPRemote:
         right_port = self.__create_message([0x0A, 0x00, 0x41, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
         notifier = self.__create_message([0x01, 0x00])
 
-        self.__set_remote_color(self.__color)
+        self.__set_led_color(self.__color)
         utime.sleep(0.1)
         self.__handler.write(left_port)
         utime.sleep(0.1)
@@ -708,7 +716,7 @@ def CPhub_demo():
 
     k = 0
     while True:
-        CPhub.set_color(k%11)
+        CPhub.Led(k%11)
         k+=1
         utime.sleep(1)
         
