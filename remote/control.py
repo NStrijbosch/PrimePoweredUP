@@ -69,7 +69,7 @@ class Led:
         
     def __call__(self,color):
         """
-        callback to contorl LED color
+        callback to control LED color
 
         :param color: color byte
         :returns: nothing
@@ -83,6 +83,255 @@ class Led:
     def __set_led_color(self, color_byte):
         color = self.__hub.__create_message([0x08, 0x00, 0x81, self.__port, 0x11, 0x51, 0x00, color_byte])
         self.__hub.__handler.write(color)
+
+class Button:
+    """
+    Class to control all buttons on a hub
+    """
+
+    def __init__(self):
+        """
+        Create a instance of Button
+        """
+        pass
+
+class SingleButton:
+    """
+    Class to control a single button
+    """
+
+    def __init__(self):
+        """
+        Create a instance of a single button
+        """
+
+        # button state
+        self.__is_pressed = False
+        self.__was_pressed = False
+        self.__presses = 0
+
+    def is_pressed(self):
+        """
+        check if button is pressed
+
+        :returns: True if button is pressed; False if button is not pressed
+        """
+
+        return self.__is_pressed
+
+    def was_pressed(self):
+        """
+        check if button was pressed since last call 
+
+        :returns: True if button was pressed since last call; False if button was not pressed since last call
+        """
+        value = self.__was_pressed
+        self.__was_pressed = False
+        return value
+
+    def presses(self):
+        """
+        Number of presses since last call
+
+        :returns: integer value of number of presses since last call
+        """ 
+        value = self.__presses
+        self.__presses = 0
+        return value
+
+    """
+    private functions
+    -----------------
+    """
+
+    def __update(self,pressed):
+        """
+        update button state variables
+
+        :param pressed: boolean True if update initiated by a press on the button; False if update initiated by a release of a button
+        :returns: nothing
+        """
+
+        if pressed:
+            self.__presses += 1
+            self.__is_pressed = True
+        else:
+            if self.__is_pressed:
+                self.__was_pressed = True
+            self.__is_pressed = False           
+
+class RemoteButton:
+    """
+    Class to control button on a PoweredUP Remote
+    """
+
+    def __init__(self,hub,port):
+        """
+        Create a instance of a remote button
+        """
+
+        self.__port = port
+        self.__hub = hub
+
+        self.plus = SingleButton()
+        self.red  = SingleButton()
+        self.min  = SingleButton()
+
+    """
+    private functions
+    -----------------
+    """  
+
+    def __update(self,event):
+        """
+        update button state variables
+
+        :param event:  byte refering to button event
+        :returns: nothing
+        """
+
+        if event == 0x01:
+            self.plus.__update(True)
+        elif event == 0x7F:
+            self.red.__update(True)
+        elif event == 0xFF:
+            self.min.__update(True)
+        elif event == 0x00:
+            self.plus.__update(False)
+            self.red.__update(False)
+            self.min.__update(False)
+
+class Motion:
+    """
+    Class to handle motion sensor in PoweredUP hub
+    """
+
+    def __init__(self,hub):
+        """
+        Create a instance of Control+ hub
+        """
+
+        self.__hub = hub
+
+    def accelerometer(self):
+        """
+        acceleration around three axis 
+
+        :returns: tuple with accleration around x,y,z axis
+        """
+
+
+
+        pass
+
+    def gyroscope(self):
+        """
+        gyro rates around three axis 
+
+        :returns: tuple with gyro rate around x,y,z axis
+        """
+        pass
+
+    def yaw_pitch_roll(self):
+        pass
+
+    """
+    private functions
+    -----------------
+    """
+    def __port_value_format(self,port):
+        mode = 0x00
+        info_type = 0x80
+        port_value_format = self.__hub.__create_message([0x06, 0x00, 0x22, port, mode, info_type])
+
+    def __send_port_value_request(self, port):
+        port_value_request = self.__hub.__create_message([0x05, 0x00, 0x21, port, 0x45])
+        self.__hub.__handler.write(color)
+
+
+class device():
+    """
+    Class to PoweredUp devices connected to a physical port
+    """
+
+    def __init__(self,hub,port):
+        """
+        Create a instance of Control+ hub
+        """
+        
+        self.__hub = hub
+        self.__port = port
+
+    def mode(self, mode):
+        """
+        Set the mode of the sensor
+
+        param mode: new mode
+        returns: nothing
+        """
+
+        set_mode = self.__hub.__create_message([0x07, 0x00, 0x81, self.__port, 0x11, 0x51, mode])
+        self.__hub.__handler.write(set_mode)
+        pass
+
+    def get(self):
+        """
+        Get measurement of the sensor
+
+        returns: measurement
+        """
+
+        pass
+    
+class _motor:
+    """
+    Class to handle Motor command
+    """ 
+
+    def __init__(self,hub,port):
+        self.__hub = hub
+        self.__port = port
+
+    def reset():
+        pass
+
+    def mode():
+        pass
+
+    def get():
+        pass
+
+    def pwm(power):
+        pass
+
+    def run_at_speed(speed=50, max_power=100, acceleration=100, deceleration=100, stall = False):
+        pass
+
+    def run_for_time(time, speed=50, max_power=100, acceleration=100, deceleration=100, stall=False):
+        pass
+
+    def run_for_degrees(degrees, speed=50, max_power=100, acceleration=100, deceleration=100, stop=1, stall=True):
+        pass
+
+    def run_to_position(degrees, speed=50, max_power=100, acceleration=100, deceleration=100, stop=1, stall=True):
+        pass
+
+    def coast():
+        pass
+
+    def brake():
+        pass
+
+    def hold():
+        pass
+
+    def busy(type):
+        pass
+
+    #def pair(motor):
+    #    pass
+
+
 
 class ControlPlusHub:
     """
@@ -204,8 +453,9 @@ class ControlPlusHub:
             self.__disconnect_callback()
 
     def __on_notify(self, data):
-        pass
-
+        print(data)
+        message_type = data[3]
+        port = data[4]
 
 
 
@@ -224,17 +474,6 @@ class PoweredUPRemote:
         self.__color = PoweredUPColors.BLUE
         self.__address = None
 
-        # left buttons
-        self.BUTTON_LEFT_PLUS = self.__create_message([0x05, 0x00, 0x45, 0x00, 0x01])
-        self.BUTTON_LEFT_RED = self.__create_message([0x05, 0x00, 0x45, 0x00, 0x7F])
-        self.BUTTON_LEFT_MINUS = self.__create_message([0x05, 0x00, 0x45, 0x00, 0xFF])
-        self.BUTTON_LEFT_RELEASED = self.__create_message([0x05, 0x00, 0x45, 0x00, 0x00])
-
-        # right buttons
-        self.BUTTON_RIGHT_PLUS = self.__create_message([0x05, 0x00, 0x45, 0x01, 0x01])
-        self.BUTTON_RIGHT_RED = self.__create_message([0x05, 0x00, 0x45, 0x01, 0x7F])
-        self.BUTTON_RIGHT_MINUS = self.__create_message([0x05, 0x00, 0x45, 0x01, 0xFF])
-        self.BUTTON_RIGHT_RELEASED = self.__create_message([0x05, 0x00, 0x45, 0x01, 0x00])
 
         # center button
         self.BUTTON_CENTER_GREEN = self.__create_message([0x05, 0x00, 0x08, 0x02, 0x01])
@@ -247,15 +486,17 @@ class PoweredUPRemote:
 
         # class specific
         self.__handler = _PoweredUPHandler()
-        self.__buttons = [self.BUTTON_LEFT_RELEASED, self.BUTTON_RIGHT_RELEASED, self.BUTTON_CENTER_RELEASED]
 
         # callbacks
-        self.__button_callback = None
         self.__connect_callback = None
         self.__disconnect_callback = None
         
         # devices
-        self.Led = Led(self,0x34)
+        self.led = Led(self,0x34)
+        self.button = Button()
+        setattr(self.button,'left', RemoteButton(self,0x00))
+        setattr(self.button,'right', RemoteButton(self,0x01))
+        #setattr(self.Button,'green', SingleButton())
 
     def connect(self, timeout=3000, address=None):
         """
@@ -337,7 +578,7 @@ class PoweredUPRemote:
         right_port = self.__create_message([0x0A, 0x00, 0x41, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
         notifier = self.__create_message([0x01, 0x00])
 
-        self.Led(self.__color)
+        self.led(self.__color)
         utime.sleep(0.1)
         self.__handler.write(left_port)
         utime.sleep(0.1)
@@ -352,60 +593,17 @@ class PoweredUPRemote:
             self.__disconnect_callback()
 
     def __on_notify(self, data):
-        if data == self.BUTTON_LEFT_PLUS:
-            self.__buttons[self._LEFT_BUTTON] = self.BUTTON_LEFT_PLUS
-        if data == self.BUTTON_LEFT_RED:
-            self.__buttons[self._LEFT_BUTTON] = self.BUTTON_LEFT_RED
-        if data == self.BUTTON_LEFT_MINUS:
-            self.__buttons[self._LEFT_BUTTON] = self.BUTTON_LEFT_MINUS
-        if data == self.BUTTON_LEFT_RELEASED:
-            self.__buttons[self._LEFT_BUTTON] = self.BUTTON_LEFT_RELEASED
-        if data == self.BUTTON_RIGHT_PLUS:
-            self.__buttons[self._RIGHT_BUTTON] = self.BUTTON_RIGHT_PLUS
-        if data == self.BUTTON_RIGHT_RED:
-            self.__buttons[self._RIGHT_BUTTON] = self.BUTTON_RIGHT_RED
-        if data == self.BUTTON_RIGHT_MINUS:
-            self.__buttons[self._RIGHT_BUTTON] = self.BUTTON_RIGHT_MINUS
-        if data == self.BUTTON_RIGHT_RELEASED:
-            self.__buttons[self._RIGHT_BUTTON] = self.BUTTON_RIGHT_RELEASED
-        if data == self.BUTTON_CENTER_GREEN:
-            self.__buttons[self._CENTER_BUTTON] = self.BUTTON_CENTER_GREEN
-        if data == self.BUTTON_CENTER_RELEASED:
-            self.__buttons[self._CENTER_BUTTON] = self.BUTTON_CENTER_RELEASED
+        data = struct.unpack('%sB' % len(data), data)
+        #data = struct.pack('%sB' % len(data_unpack), data_unpack)
+        #print(data)
+        message_type = data[2]
+        port = data[3]
 
-        self.__on_button(self.__buttons)
-
-    def __on_button(self, buttons):
-        if buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_RELEASED and buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_RELEASED and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 0
-        elif buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_PLUS and buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_RELEASED and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 1
-        elif buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_RED and buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_RELEASED and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 2
-        elif buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_MINUS and buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_RELEASED and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 3
-        elif buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_PLUS and buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_RELEASED and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 4
-        elif buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_RED and buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_RELEASED and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 5
-        elif buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_MINUS and buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_RELEASED and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 6
-        elif buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_PLUS and buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_PLUS and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 7
-        elif buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_MINUS and buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_MINUS and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 8
-        elif buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_PLUS and buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_MINUS and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 9
-        elif buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_MINUS and buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_PLUS and buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_RELEASED:
-            button = 10
-        elif buttons[self._CENTER_BUTTON] == self.BUTTON_CENTER_GREEN and buttons[self._LEFT_BUTTON] == self.BUTTON_LEFT_RELEASED and buttons[self._RIGHT_BUTTON] == self.BUTTON_RIGHT_RELEASED:
-            button = 11
-        else:
-            button = 0
-
-        # callback the button data
-        if self.__button_callback:
-            self.__button_callback(button)
+        if port == 0x00:
+            self.button.left.__update(data[4])
+        elif port == 0x01:
+            self.button.right.__update(data[4])
+        
 
 
 # Internal used helper classes
@@ -718,7 +916,7 @@ class _Decoder:
 
 def CPhub_demo():
     
-    CPhub = PoweredUPRemote()
+    CPhub = ControlPlusHub()
     CPhub.connect()
 
     while not CPhub.is_connected():
@@ -730,4 +928,19 @@ def CPhub_demo():
         k+=1
         utime.sleep(1)
         
-CPhub_demo()
+def Remote_demo():
+    
+    Remote = PoweredUPRemote()
+    Remote.connect()
+
+    while not Remote.is_connected():
+        pass
+
+    k = 0
+    while True:
+        Remote.led(k%11)
+        print(Remote.button.left.red.presses())
+        k+=1
+        utime.sleep(1)
+        
+Remote_demo()
