@@ -258,11 +258,28 @@ class Motion:
             self.__gyro = message
         elif port == 0x63:
             self.__tilt = message
-        
 
-class device():
+    
+            
+class Port():
     """
-    Class to PoweredUp devices connected to a physical port
+    Class to control PoweredUp devices connected to a physical port
+    """   
+    
+    def __init__(self,hub,port):
+        """
+        Create a instance of Port
+        """
+        
+        self.__hub = hub
+        self.__port = port
+        self.device = Device(self.__hub, self.__port)
+
+
+
+class Device():
+    """
+    Class to read sensor data from PoweredUP devices connected to a physical port
     """
 
     def __init__(self,hub,port):
@@ -272,7 +289,8 @@ class device():
         
         self.__hub = hub
         self.__port = port
-
+        self.__value = 0
+    
     def mode(self, mode):
         """
         Set the mode of the sensor
@@ -280,9 +298,9 @@ class device():
         param mode: new mode
         returns: nothing
         """
-
-        set_mode = self.__hub.__create_message([0x07, 0x00, 0x81, self.__port, 0x11, 0x51, mode])
-        self.__hub.__handler.write(set_mode)
+        
+        #set_mode = self.__hub.__create_message([0x07, 0x00, 0x81, self.__port, 0x11, 0x51, mode])
+        #self.__hub.__handler.write(set_mode)
         pass
 
     def get(self):
@@ -292,7 +310,15 @@ class device():
         returns: measurement
         """
 
-        pass
+        return self.__value
+    
+        """
+    private functions
+    -----------------
+    """
+    def __update(self,message):
+        
+        self.__value = message
     
 class _motor:
     """
@@ -369,6 +395,11 @@ class ControlPlusHub:
         # devices
         self.led = Led(self,0x32)
         self.motion = Motion(self, port_acc = 0x61, port_gyro = 0x62, port_tilt = 0x63)
+        self.port = type("", (), {})()
+        setattr(self.port,"A", Port(self,0x00))
+        setattr(self.port,"B", Port(self,0x01))
+        setattr(self.port,"C", Port(self,0x02))
+        setattr(self.port,"D", Port(self,0x03))
 
     def connect(self, timeout=3000, address=None):
         """
@@ -379,7 +410,7 @@ class ControlPlusHub:
         :returns: nothing
         """
         if address:
-            self.__address = ubinascii.unhexlify(address.replace(':', ''))
+            self.__address = ubinascii.unhexlify(address.replace(":", ""))
         self.__handler.debug = self.debug
         self.__handler.on_connect(callback=self.__on_connect)
         self.__handler.on_disconnect(callback=self.__on_disconnect)
@@ -434,7 +465,7 @@ class ControlPlusHub:
     """
 
     def __create_message(self, byte_array):
-        message = struct.pack('%sB' % len(byte_array), *byte_array)
+        message = struct.pack("%sB" % len(byte_array), *byte_array)
         return message
 
     def __on_scan(self, addr_type, addr, man_data):
@@ -446,13 +477,24 @@ class ControlPlusHub:
                 self.__handler.connect(addr_type, addr)
 
     def __on_connect(self):
-        #A_port = self.__create_message([0x0A, 0x00, 0x41, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        port_A = self.__create_message([0x0A, 0x00, 0x41, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        port_B = self.__create_message([0x0A, 0x00, 0x41, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        port_C = self.__create_message([0x0A, 0x00, 0x41, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        port_D = self.__create_message([0x0A, 0x00, 0x41, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
         port_ACCELEROMETER = self.__create_message([0x0A, 0x00, 0x41, 0x61, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
         port_GYRO = self.__create_message([0x0A, 0x00, 0x41, 0x62, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
         port_TILT = self.__create_message([0x0A, 0x00, 0x41, 0x63, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
         notifier = self.__create_message([0x01, 0x00])
 
         self.led(self.__color)
+        utime.sleep(0.1)
+        self.__handler.write(port_A)
+        utime.sleep(0.1)
+        self.__handler.write(port_B)
+        utime.sleep(0.1)
+        self.__handler.write(port_C)
+        utime.sleep(0.1)
+        self.__handler.write(port_D)
         utime.sleep(0.1)
         self.__handler.write(port_ACCELEROMETER)
         utime.sleep(0.1)
@@ -469,19 +511,29 @@ class ControlPlusHub:
             self.__disconnect_callback()
 
     def __on_notify(self, data):
-        header = struct.unpack('%sB' % len(data), data)
+        header = struct.unpack("%sB" % len(data), data)
         message_type = header[2] #ubinascii.hexlify(bytearray([header[2]]))
         port = header[3] #ubinascii.hexlify(bytearray([header[3]]))
-        #data = struct.pack('%sB' % len(data_unpack), data_unpack)
+        #data = struct.pack("%sB" % len(data_unpack), data_unpack)
         #print(message_type)
         #print(port)
         if message_type == 0x45:
-            #yaw, pitch, roll = struct.unpack('%sh' % 3, data[4:])
-            #print('yaw: ', yaw,  'pitch: ', pitch, 'roll: ', roll)
+            #yaw, pitch, roll = struct.unpack("%sh" % 3, data[4:])
+            #print("yaw: ", yaw,  "pitch: ", pitch, "roll: ", roll)
             if port == 0x00:
-                force = struct.unpack('%sB' % 1, data[4:])
+                message = struct.unpack("%sb" % 1, data[4:])
+                self.port.A.device.__update(message[0])
+            if port == 0x01:
+                message = struct.unpack("%sb" % 1, data[4:])
+                self.port.B.device.__update(message[0])
+            if port == 0x02:
+                message = struct.unpack("%sb" % 1, data[4:])
+                self.port.C.device.__update(message[0])
+            if port == 0x03:
+                message = struct.unpack("%sb" % 1, data[4:])
+                self.port.D.device.__update(message[0])
             elif port == 0x61 or port == 0x62 or port== 0x63:
-                message = struct.unpack('%sh' % 3, data[4:])
+                message = struct.unpack("%sh" % 3, data[4:])
                 self.motion.__update(port,message)
                 
                 
@@ -522,9 +574,9 @@ class PoweredUPRemote:
         # devices
         self.led = Led(self,0x34)
         self.button = Button()
-        setattr(self.button,'left', RemoteButton(self,0x00))
-        setattr(self.button,'right', RemoteButton(self,0x01))
-        #setattr(self.Button,'green', SingleButton())
+        setattr(self.button,"left", RemoteButton(self,0x00))
+        setattr(self.button,"right", RemoteButton(self,0x01))
+        #setattr(self.Button,"green", SingleButton())
 
     def connect(self, timeout=3000, address=None):
         """
@@ -535,7 +587,7 @@ class PoweredUPRemote:
         :returns: nothing
         """
         if address:
-            self.__address = ubinascii.unhexlify(address.replace(':', ''))
+            self.__address = ubinascii.unhexlify(address.replace(":", ""))
         self.__handler.debug = self.debug
         self.__handler.on_connect(callback=self.__on_connect)
         self.__handler.on_disconnect(callback=self.__on_disconnect)
@@ -590,7 +642,7 @@ class PoweredUPRemote:
     """
 
     def __create_message(self, byte_array):
-        message = struct.pack('%sB' % len(byte_array), *byte_array)
+        message = struct.pack("%sB" % len(byte_array), *byte_array)
         return message
 
     def __on_scan(self, addr_type, addr, man_data):
@@ -621,8 +673,8 @@ class PoweredUPRemote:
             self.__disconnect_callback()
 
     def __on_notify(self, data):
-        data = struct.unpack('%sB' % len(data), data)
-        #data = struct.pack('%sB' % len(data_unpack), data_unpack)
+        data = struct.unpack("%sB" % len(data), data)
+        #data = struct.pack("%sB" % len(data_unpack), data_unpack)
         #print(data)
         message_type = data[2]
         port = data[3]
@@ -895,7 +947,7 @@ class _Decoder:
         n = self.__decode_field(payload, const(0xFF))
         if not n:
             return []
-        company_identifier = ubinascii.hexlify(struct.pack('<h', *struct.unpack('>h', n[0])))
+        company_identifier = ubinascii.hexlify(struct.pack("<h", *struct.unpack(">h", n[0])))
         company_name = self.__COMPANY_IDENTIFIER_CODES.get(company_identifier.decode(), "?")
         company_data = n[0][2:]
         man_data.append(company_identifier.decode())
@@ -951,14 +1003,22 @@ def CPhub_demo():
     while not CPhub.is_connected():
         pass
 
+    TiltSensor =CPhub.motion
+    ForseSensor = CPhub.port.A.device
     k = 0
     while True:
+        
+        ##
         CPhub.led(k%11)
+
+        ##
+        yaw, pitch, roll = TiltSensor.yaw_pitch_roll()
+        force = ForseSensor.get()
+        print("yaw: ", yaw, "pitch: ", pitch, "roll: ", roll, "force: ", force)
+        
+        ##
         k+=1
-        utime.sleep(1)
-        print('acc: ',CPhub.motion.accelerometer())
-        print('gyro: ',CPhub.motion.gyroscope())
-        print('yaw pitch roll', CPhub.motion.yaw_pitch_roll())
+        utime.sleep_ms(100)
         
 def Remote_demo():
     
