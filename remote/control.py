@@ -206,12 +206,19 @@ class Motion:
     Class to handle motion sensor in PoweredUP hub
     """
 
-    def __init__(self,hub):
+    def __init__(self,hub, port_acc = None, port_gyro = None, port_tilt = None):
         """
         Create a instance of Control+ hub
         """
 
         self.__hub = hub
+        self.__port_acc = port_acc
+        self.__port_gyro = port_gyro
+        self.__port_tilt = port_tilt
+        
+        self.__acc = [0, 0, 0]
+        self.__gyro = [0, 0, 0]
+        self.__tilt = [0, 0, 0]
 
     def accelerometer(self):
         """
@@ -219,10 +226,8 @@ class Motion:
 
         :returns: tuple with accleration around x,y,z axis
         """
-
-
-
-        pass
+        
+        return self.__acc
 
     def gyroscope(self):
         """
@@ -230,24 +235,30 @@ class Motion:
 
         :returns: tuple with gyro rate around x,y,z axis
         """
-        pass
+        return self.__gyro
 
     def yaw_pitch_roll(self):
-        pass
+        """
+        yaw pitch roll angles  
+
+        :returns: tuple with yaw pitch roll angle
+        """
+        
+        return self.__tilt
 
     """
     private functions
     -----------------
     """
-    def __port_value_format(self,port):
-        mode = 0x00
-        info_type = 0x80
-        port_value_format = self.__hub.__create_message([0x06, 0x00, 0x22, port, mode, info_type])
-
-    def __send_port_value_request(self, port):
-        port_value_request = self.__hub.__create_message([0x05, 0x00, 0x21, port, 0x45])
-        self.__hub.__handler.write(color)
-
+    def __update(self,port,message):
+        
+        if port == 0x61:
+            self.__acc = message
+        elif port == 0x62:
+            self.__gyro = message
+        elif port == 0x63:
+            self.__tilt = message
+        
 
 class device():
     """
@@ -356,7 +367,8 @@ class ControlPlusHub:
         self.__disconnect_callback = None
         
         # devices
-        self.Led = Led(self,0x32)
+        self.led = Led(self,0x32)
+        self.motion = Motion(self, port_acc = 0x61, port_gyro = 0x62, port_tilt = 0x63)
 
     def connect(self, timeout=3000, address=None):
         """
@@ -422,7 +434,7 @@ class ControlPlusHub:
     """
 
     def __create_message(self, byte_array):
-        message = struct.pack('%sb' % len(byte_array), *byte_array)
+        message = struct.pack('%sB' % len(byte_array), *byte_array)
         return message
 
     def __on_scan(self, addr_type, addr, man_data):
@@ -434,17 +446,21 @@ class ControlPlusHub:
                 self.__handler.connect(addr_type, addr)
 
     def __on_connect(self):
-        #left_port = self.__create_message([0x0A, 0x00, 0x41, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
-        #right_port = self.__create_message([0x0A, 0x00, 0x41, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
-        #notifier = self.__create_message([0x01, 0x00])
+        #A_port = self.__create_message([0x0A, 0x00, 0x41, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        port_ACCELEROMETER = self.__create_message([0x0A, 0x00, 0x41, 0x61, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        port_GYRO = self.__create_message([0x0A, 0x00, 0x41, 0x62, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        port_TILT = self.__create_message([0x0A, 0x00, 0x41, 0x63, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01])
+        notifier = self.__create_message([0x01, 0x00])
 
-        self.Led(self.__color)
-        #utime.sleep(0.1)
-        #self.__handler.write(left_port)
-        #utime.sleep(0.1)
-        #self.__handler.write(right_port)
-        #utime.sleep(0.1)
-        #self.__handler.write(notifier, 0x0C)
+        self.led(self.__color)
+        utime.sleep(0.1)
+        self.__handler.write(port_ACCELEROMETER)
+        utime.sleep(0.1)
+        self.__handler.write(port_GYRO)
+        utime.sleep(0.1)
+        self.__handler.write(port_TILT)
+        utime.sleep(0.1)
+        self.__handler.write(notifier, 15)
         if self.__connect_callback:
             self.__connect_callback()
 
@@ -453,10 +469,22 @@ class ControlPlusHub:
             self.__disconnect_callback()
 
     def __on_notify(self, data):
-        print(data)
-        message_type = data[3]
-        port = data[4]
-
+        header = struct.unpack('%sB' % len(data), data)
+        message_type = header[2] #ubinascii.hexlify(bytearray([header[2]]))
+        port = header[3] #ubinascii.hexlify(bytearray([header[3]]))
+        #data = struct.pack('%sB' % len(data_unpack), data_unpack)
+        #print(message_type)
+        #print(port)
+        if message_type == 0x45:
+            #yaw, pitch, roll = struct.unpack('%sh' % 3, data[4:])
+            #print('yaw: ', yaw,  'pitch: ', pitch, 'roll: ', roll)
+            if port == 0x00:
+                force = struct.unpack('%sB' % 1, data[4:])
+            elif port == 0x61 or port == 0x62 or port== 0x63:
+                message = struct.unpack('%sh' % 3, data[4:])
+                self.motion.__update(port,message)
+                
+                
 
 
 class PoweredUPRemote:
@@ -562,7 +590,7 @@ class PoweredUPRemote:
     """
 
     def __create_message(self, byte_array):
-        message = struct.pack('%sb' % len(byte_array), *byte_array)
+        message = struct.pack('%sB' % len(byte_array), *byte_array)
         return message
 
     def __on_scan(self, addr_type, addr, man_data):
@@ -840,6 +868,7 @@ class _PoweredUPHandler:
 
         elif event == self.__IRQ_GATTC_NOTIFY:
             conn_handle, value_handle, notify_data = data
+            #print(notify_data)
             if self.__notify_callback:
                 self.__notify_callback(notify_data)
 
@@ -924,9 +953,12 @@ def CPhub_demo():
 
     k = 0
     while True:
-        CPhub.Led(k%11)
+        CPhub.led(k%11)
         k+=1
         utime.sleep(1)
+        print('acc: ',CPhub.motion.accelerometer())
+        print('gyro: ',CPhub.motion.gyroscope())
+        print('yaw pitch roll', CPhub.motion.yaw_pitch_roll())
         
 def Remote_demo():
     
@@ -943,4 +975,4 @@ def Remote_demo():
         k+=1
         utime.sleep(1)
         
-Remote_demo()
+CPhub_demo()
